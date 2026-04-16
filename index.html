@@ -1,16 +1,1065 @@
 <!doctype html>
 <html lang="ru">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#0d0f17" />
-    <title>D&amp;D Character Sheet</title>
-    <link rel="preconnect" href="https://api.fontshare.com" />
-    <link href="https://api.fontshare.com/v2/css?f[]=satoshi@300,400,500,700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./src/styles.css" />
-  </head>
-  <body>
-    <div id="app"></div>
-    <script type="module" src="./src/app.js"></script>
-  </body>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0d0f17" />
+  <title>D&amp;D Character Sheet</title>
+  <link rel="preconnect" href="https://api.fontshare.com" />
+  <link href="https://api.fontshare.com/v2/css?f[]=satoshi@300,400,500,700&display=swap" rel="stylesheet" />
+  <style>
+    /* ─── Tokens ───────────────────────────────────────────────────────────── */
+    :root {
+      --color-bg: #0d0f17;
+      --color-surface: #171926;
+      --color-surface-2: #1d2030;
+      --color-surface-3: #25283c;
+      --color-border: rgba(255,255,255,.08);
+      --color-text: #f3f4f8;
+      --color-text-muted: #a4abc0;
+      --color-text-faint: #72788f;
+      --color-primary: #8b6cff;
+      --color-primary-2: #a88bff;
+      --color-primary-soft: rgba(139,108,255,.16);
+      --color-positive: #58d67b;
+      --color-negative: #ff6d8a;
+      --color-gold: #f0c060;
+      --color-gold-soft: rgba(240,192,96,.14);
+      --radius-sm: 12px;
+      --radius-md: 18px;
+      --radius-lg: 24px;
+      --radius-xl: 28px;
+      --radius-full: 999px;
+      --space-2: 8px;
+      --space-3: 12px;
+      --space-4: 16px;
+      --space-5: 20px;
+      --space-6: 24px;
+      --space-8: 32px;
+      --shadow: 0 16px 34px rgba(0,0,0,.3);
+      --safe-top: env(safe-area-inset-top);
+      --safe-bottom: env(safe-area-inset-bottom);
+      --font: 'Satoshi', -apple-system, BlinkMacSystemFont, sans-serif;
+      --transition: 180ms cubic-bezier(.16,1,.3,1);
+    }
+
+    /* ─── Reset ────────────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { -webkit-text-size-adjust: none; text-size-adjust: none; scroll-behavior: smooth; }
+    body {
+      min-height: 100dvh;
+      background: radial-gradient(circle at top, #1a1e31 0%, #10131e 28%, #0b0d14 58%, #08090f 100%);
+      font: 400 16px/1.45 var(--font);
+      color: var(--color-text);
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+    button, input, select, textarea { font: inherit; color: inherit; }
+    button { border: none; background: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    input, textarea, select { outline: none; }
+
+    /* ─── Shell ────────────────────────────────────────────────────────────── */
+    .shell {
+      min-height: 100dvh;
+      padding-top: calc(var(--safe-top) + 8px);
+      padding-bottom: calc(var(--safe-bottom) + 96px);
+      max-width: 720px;
+      margin: 0 auto;
+    }
+
+    /* ─── Topbar ───────────────────────────────────────────────────────────── */
+    .topbar { padding: var(--space-3) var(--space-4) var(--space-4); }
+    .brand-row { display: flex; align-items: center; gap: 12px; }
+    .brand-logo {
+      width: 12px; height: 12px; border-radius: var(--radius-full);
+      background: linear-gradient(180deg, var(--color-primary-2), var(--color-primary));
+      box-shadow: 0 0 0 4px rgba(139,108,255,.1); flex-shrink: 0;
+    }
+    .brand-title { font-size: 20px; font-weight: 700; letter-spacing: -.02em; }
+    .brand-sub { font-size: 13px; color: var(--color-text-muted); margin-top: 2px; }
+
+    /* ─── Content ──────────────────────────────────────────────────────────── */
+    .content { padding: 0 var(--space-4); }
+    .page { padding-bottom: var(--space-6); display: none; }
+    .page.active { display: grid; gap: var(--space-4); }
+
+    /* ─── Cards ────────────────────────────────────────────────────────────── */
+    .panel, .hero-card, .stat-card, .mini-card {
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+    }
+    .hero-card { padding: var(--space-5); }
+    .panel { padding: var(--space-5); }
+    .panel-head {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: var(--space-4); gap: 10px;
+    }
+    .panel-head h2 { font-size: 18px; font-weight: 700; }
+
+    /* ─── Stats grid ───────────────────────────────────────────────────────── */
+    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-3); }
+    .stat-card { padding: var(--space-4); text-align: center; border-radius: var(--radius-md); }
+    .stat-card .stat-name { display: block; font-size: 11px; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 4px; }
+    .stat-card .stat-score { display: block; font-size: 28px; font-weight: 700; line-height: 1; }
+    .stat-card .stat-mod { display: block; font-size: 13px; color: var(--color-primary-2); margin-top: 4px; }
+
+    /* ─── HP bar ───────────────────────────────────────────────────────────── */
+    .hp-row { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: var(--space-3); }
+    .hp-nums { font-size: 32px; font-weight: 700; line-height: 1; }
+    .hp-nums span { font-size: 16px; color: var(--color-text-muted); }
+    .bar { height: 10px; border-radius: var(--radius-full); background: rgba(255,255,255,.08); overflow: hidden; }
+    .bar > div { height: 100%; border-radius: inherit; transition: width .4s cubic-bezier(.16,1,.3,1); }
+    .hp-actions { display: grid; grid-template-columns: 1fr auto 1fr; gap: var(--space-2); align-items: center; margin-top: var(--space-3); }
+    .hp-actions input {
+      width: 100%; min-height: 46px; padding: 0 12px; border-radius: var(--radius-md);
+      border: 1px solid var(--color-border); background: rgba(255,255,255,.04);
+      text-align: center; font-size: 18px; font-weight: 700;
+      transition: border-color var(--transition), box-shadow var(--transition);
+    }
+    .hp-actions input:focus { border-color: rgba(168,139,255,.6); box-shadow: 0 0 0 4px var(--color-primary-soft); }
+    .hp-sep { color: var(--color-text-faint); text-align: center; font-size: 13px; }
+
+    /* ─── Mini grid ────────────────────────────────────────────────────────── */
+    .mini-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-3); }
+    .mini-card { padding: var(--space-4); border-radius: var(--radius-md); }
+    .mini-card span { display: block; font-size: 12px; color: var(--color-text-muted); margin-bottom: 6px; }
+    .mini-card strong { display: block; font-size: 18px; font-weight: 700; }
+    .mini-card.editable { cursor: pointer; transition: border-color var(--transition); }
+    .mini-card.editable:hover { border-color: rgba(168,139,255,.3); }
+
+    /* ─── Skills ───────────────────────────────────────────────────────────── */
+    .skills-list { display: grid; gap: 2px; }
+    .skill-row {
+      display: flex; align-items: center; gap: 10px; padding: 9px 10px;
+      border-radius: var(--radius-sm); transition: background var(--transition);
+    }
+    .skill-row:hover { background: rgba(255,255,255,.04); }
+    .prof-dot {
+      width: 10px; height: 10px; border-radius: var(--radius-full); flex-shrink: 0;
+      border: 2px solid var(--color-text-faint); cursor: pointer;
+      transition: background var(--transition), border-color var(--transition);
+    }
+    .prof-dot.on { background: var(--color-primary); border-color: var(--color-primary); }
+    .prof-dot.exp { background: var(--color-gold); border-color: var(--color-gold); }
+    .skill-name { flex: 1; font-size: 14px; }
+    .skill-attr { font-size: 11px; color: var(--color-text-faint); }
+    .skill-bonus { font-size: 14px; font-weight: 700; min-width: 32px; text-align: right; }
+
+    /* ─── Saving throws ────────────────────────────────────────────────────── */
+    .saves-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-2); }
+    .save-row {
+      display: flex; align-items: center; gap: 8px; padding: 10px;
+      background: rgba(255,255,255,.03); border-radius: var(--radius-sm);
+    }
+    .save-name { flex: 1; font-size: 13px; }
+    .save-val { font-size: 14px; font-weight: 700; color: var(--color-primary-2); }
+
+    /* ─── Spells ───────────────────────────────────────────────────────────── */
+    .spell-slots { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-2); margin-bottom: var(--space-4); }
+    .slot-card {
+      background: rgba(255,255,255,.03); border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm); padding: 10px; text-align: center;
+    }
+    .slot-card .slot-lvl { font-size: 11px; color: var(--color-text-faint); text-transform: uppercase; letter-spacing: .06em; }
+    .slot-card .slot-pips { display: flex; justify-content: center; gap: 4px; margin: 6px 0; flex-wrap: wrap; }
+    .pip {
+      width: 12px; height: 12px; border-radius: var(--radius-full);
+      border: 2px solid var(--color-text-faint); cursor: pointer;
+      transition: background var(--transition), border-color var(--transition);
+    }
+    .pip.used { background: var(--color-primary); border-color: var(--color-primary); }
+    .slot-card .slot-nums { font-size: 11px; color: var(--color-text-muted); }
+
+    /* ─── List ─────────────────────────────────────────────────────────────── */
+    .list { display: grid; gap: 0; }
+    .list-item {
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 12px; padding: 14px 0;
+      border-top: 1px solid rgba(255,255,255,.06);
+    }
+    .list-item:first-child { border-top: 0; padding-top: 0; }
+    .item-left { flex: 1; min-width: 0; }
+    .item-title { font-weight: 600; font-size: 15px; }
+    .item-sub { font-size: 13px; color: var(--color-text-muted); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .item-right { font-size: 13px; color: var(--color-text-muted); white-space: nowrap; }
+    .badge {
+      display: inline-flex; align-items: center; padding: 3px 9px;
+      border-radius: var(--radius-full); font-size: 12px; font-weight: 700;
+      background: var(--color-primary-soft); color: var(--color-primary-2);
+    }
+    .badge.gold { background: var(--color-gold-soft); color: var(--color-gold); }
+
+    /* ─── Forms ────────────────────────────────────────────────────────────── */
+    .field { display: grid; gap: 8px; }
+    .field label { font-size: 14px; font-weight: 700; }
+    .field-input {
+      width: 100%; min-height: 50px; padding: 0 16px;
+      border-radius: var(--radius-md); border: 1px solid var(--color-border);
+      background: rgba(255,255,255,.035);
+      transition: border-color var(--transition), box-shadow var(--transition);
+    }
+    .field-input:focus { border-color: rgba(168,139,255,.6); box-shadow: 0 0 0 4px var(--color-primary-soft); }
+    textarea.field-input { min-height: 90px; padding: 14px 16px; resize: vertical; line-height: 1.5; }
+    .fields { display: grid; gap: var(--space-3); }
+    .two-col { grid-template-columns: 1fr 1fr; }
+
+    /* ─── Buttons ──────────────────────────────────────────────────────────── */
+    .primary-btn {
+      min-height: 50px; width: 100%; border-radius: var(--radius-md);
+      background: linear-gradient(180deg, var(--color-primary-2), var(--color-primary));
+      color: #fff; font-weight: 700;
+      box-shadow: 0 8px 22px rgba(139,108,255,.24);
+      transition: transform var(--transition), box-shadow var(--transition);
+    }
+    .primary-btn:active { transform: scale(.97); }
+    .secondary-btn {
+      min-height: 44px; padding: 0 var(--space-4); border-radius: var(--radius-md);
+      background: rgba(255,255,255,.04); border: 1px solid var(--color-border);
+      font-weight: 700; transition: background var(--transition);
+    }
+    .secondary-btn:active { background: rgba(255,255,255,.08); }
+    .icon-btn {
+      width: 36px; height: 36px; border-radius: var(--radius-sm);
+      background: rgba(255,255,255,.04); border: 1px solid var(--color-border);
+      display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .danger-row { display: flex; gap: var(--space-3); }
+    .danger-row .primary-btn { flex: 1; }
+
+    /* ─── Death saves ──────────────────────────────────────────────────────── */
+    .death-grid { display: flex; gap: var(--space-6); justify-content: center; margin-top: var(--space-3); }
+    .death-col { text-align: center; }
+    .death-col label { display: block; font-size: 12px; color: var(--color-text-muted); margin-bottom: 8px; }
+    .death-pips { display: flex; gap: 8px; justify-content: center; }
+    .death-pip {
+      width: 20px; height: 20px; border-radius: var(--radius-full);
+      border: 2px solid var(--color-text-faint); cursor: pointer;
+      transition: background var(--transition), border-color var(--transition);
+    }
+    .death-pip.success.on { background: var(--color-positive); border-color: var(--color-positive); }
+    .death-pip.fail.on { background: var(--color-negative); border-color: var(--color-negative); }
+
+    /* ─── Notes textarea ───────────────────────────────────────────────────── */
+    .notes-area {
+      width: 100%; min-height: 160px; padding: 14px 16px;
+      border-radius: var(--radius-md); border: 1px solid var(--color-border);
+      background: rgba(255,255,255,.03);
+      font: inherit; color: var(--color-text); resize: vertical; line-height: 1.6;
+      transition: border-color var(--transition), box-shadow var(--transition);
+    }
+    .notes-area:focus { border-color: rgba(168,139,255,.6); box-shadow: 0 0 0 4px var(--color-primary-soft); }
+    .notes-area::placeholder { color: var(--color-text-faint); }
+
+    /* ─── Eyebrow / helpers ────────────────────────────────────────────────── */
+    .eyebrow { font-size: 12px; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: .08em; }
+    .helper { font-size: 13px; color: var(--color-text-muted); }
+    .positive { color: var(--color-positive); }
+    .negative { color: var(--color-negative); }
+    .gold { color: var(--color-gold); }
+    .divider { height: 1px; background: rgba(255,255,255,.06); margin: var(--space-2) 0; }
+    .empty { color: var(--color-text-muted); padding: 28px 14px; text-align: center; background: rgba(255,255,255,.04); border-radius: var(--radius-md); border: 1px dashed var(--color-border); font-size: 14px; }
+
+    /* ─── Initiative badge ─────────────────────────────────────────────────── */
+    .init-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 52px; height: 52px; border-radius: var(--radius-full);
+      background: var(--color-primary-soft); border: 2px solid var(--color-primary);
+      font-size: 20px; font-weight: 700; color: var(--color-primary-2);
+    }
+
+    /* ─── Sheet (bottom drawer) ────────────────────────────────────────────── */
+    .sheet-backdrop {
+      position: fixed; inset: 0; background: rgba(0,0,0,.48); z-index: 40;
+      opacity: 0; visibility: hidden; transition: opacity .18s, visibility .18s;
+    }
+    .sheet-backdrop.open { opacity: 1; visibility: visible; }
+    .sheet {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 45;
+      padding: var(--space-4);
+      padding-bottom: calc(var(--space-4) + var(--safe-bottom));
+      border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+      background: linear-gradient(180deg, #1c1f2e, #151826);
+      border: 1px solid var(--color-border);
+      transform: translateY(110%);
+      transition: transform .22s cubic-bezier(.16,1,.3,1);
+      max-height: 88dvh; overflow-y: auto; overscroll-behavior: contain;
+    }
+    .sheet.open { transform: translateY(0); }
+    .sheet-handle { width: 52px; height: 5px; border-radius: var(--radius-full); background: rgba(255,255,255,.14); margin: 0 auto 14px; }
+    .sheet-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--space-4); gap: 12px; }
+    .sheet-head h3 { font-size: 22px; font-weight: 700; line-height: 1.1; }
+
+    /* ─── Tab bar ──────────────────────────────────────────────────────────── */
+    .tabbar {
+      position: fixed; left: 50%; transform: translateX(-50%);
+      bottom: max(8px, var(--safe-bottom));
+      z-index: 18;
+      width: min(92%, 520px);
+      display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px;
+      padding: 8px;
+      background: rgba(23,25,38,.9); border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg); backdrop-filter: blur(20px);
+      box-shadow: 0 12px 30px rgba(16,18,31,.38);
+    }
+    .tab-btn {
+      min-height: 52px; border-radius: var(--radius-md); font-size: 11px;
+      color: var(--color-text-muted); padding: 6px 4px; text-align: center;
+      border: 1px solid transparent; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 3px;
+      transition: background var(--transition), color var(--transition);
+    }
+    .tab-btn .tab-icon { font-size: 20px; line-height: 1; }
+    .tab-btn.active { background: rgba(255,255,255,.06); color: #fff; font-weight: 700; border-color: rgba(255,255,255,.06); }
+    .tab-btn:active { transform: scale(.96); }
+
+    /* ─── Responsive ───────────────────────────────────────────────────────── */
+    @media (min-width: 540px) {
+      .stats-grid { grid-template-columns: repeat(6, 1fr); }
+      .spell-slots { grid-template-columns: repeat(5, 1fr); }
+    }
+  </style>
+</head>
+<body>
+<div class="shell">
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="brand-row">
+      <div class="brand-logo"></div>
+      <div>
+        <span class="brand-title" id="char-name-display">Новый персонаж</span>
+        <span class="brand-sub" id="char-class-display">Выберите класс</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div class="content">
+
+    <!-- ══════════════════ PAGE: MAIN ══════════════════ -->
+    <div class="page active" id="page-main">
+
+      <!-- Hero: HP -->
+      <div class="hero-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+          <div>
+            <div class="eyebrow" style="margin-bottom:4px">Хиты</div>
+            <div class="hp-row">
+              <div class="hp-nums" id="hp-display">— <span>/ —</span></div>
+              <div class="init-badge" id="init-display">—</div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+            <div class="eyebrow">КД</div>
+            <div style="font-size:28px;font-weight:700" id="ac-display">—</div>
+          </div>
+        </div>
+        <div class="bar"><div id="hp-bar" style="width:100%;background:linear-gradient(90deg,#58d67b,#a8ff78)"></div></div>
+        <div class="hp-actions">
+          <input type="number" id="hp-dmg-input" placeholder="Урон" min="0" />
+          <div class="hp-sep">·</div>
+          <input type="number" id="hp-heal-input" placeholder="Лечение" min="0" />
+        </div>
+        <div class="danger-row">
+          <button class="secondary-btn" onclick="applyHeal()">+ Лечение</button>
+          <button class="primary-btn" onclick="applyDamage()" style="background:linear-gradient(180deg,#ff8fab,#ff6d8a);box-shadow:0 8px 22px rgba(255,109,138,.24)">− Урон</button>
+        </div>
+        <!-- Death saves -->
+        <div id="death-saves-section" style="display:none">
+          <div class="divider"></div>
+          <div class="eyebrow" style="text-align:center;margin-bottom:4px">Спасброски от смерти</div>
+          <div class="death-grid">
+            <div class="death-col">
+              <label>Успех</label>
+              <div class="death-pips" id="death-success"></div>
+            </div>
+            <div class="death-col">
+              <label>Провал</label>
+              <div class="death-pips" id="death-fail"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Характеристики</h2>
+          <button class="icon-btn" onclick="openSheet('stats-sheet')">✏️</button>
+        </div>
+        <div class="stats-grid" id="stats-grid"></div>
+      </div>
+
+      <!-- Combat mini -->
+      <div class="mini-grid">
+        <div class="mini-card" onclick="openSheet('combat-sheet')" style="cursor:pointer">
+          <span>Бонус мастерства</span>
+          <strong id="prof-display">+2</strong>
+        </div>
+        <div class="mini-card" onclick="openSheet('combat-sheet')" style="cursor:pointer">
+          <span>Скорость</span>
+          <strong id="speed-display">30 фт</strong>
+        </div>
+        <div class="mini-card" onclick="openSheet('combat-sheet')" style="cursor:pointer">
+          <span>Кость хитов</span>
+          <strong id="hd-display">—</strong>
+        </div>
+        <div class="mini-card" onclick="openSheet('combat-sheet')" style="cursor:pointer">
+          <span>Уровень</span>
+          <strong id="level-display">1</strong>
+        </div>
+      </div>
+
+      <!-- Saving throws -->
+      <div class="panel">
+        <div class="panel-head"><h2>Спасброски</h2></div>
+        <div class="saves-grid" id="saves-grid"></div>
+      </div>
+    </div>
+
+    <!-- ══════════════════ PAGE: SKILLS ══════════════════ -->
+    <div class="page" id="page-skills">
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Навыки</h2>
+          <span class="helper">● проф. ◉ эксп.</span>
+        </div>
+        <div class="skills-list" id="skills-list"></div>
+      </div>
+    </div>
+
+    <!-- ══════════════════ PAGE: SPELLS ══════════════════ -->
+    <div class="page" id="page-spells">
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Ячейки заклинаний</h2>
+        </div>
+        <div class="spell-slots" id="spell-slots"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Известные заклинания</h2>
+          <button class="icon-btn" onclick="openSheet('spell-add-sheet')">＋</button>
+        </div>
+        <div id="spells-list"></div>
+      </div>
+    </div>
+
+    <!-- ══════════════════ PAGE: INVENTORY ══════════════════ -->
+    <div class="page" id="page-inventory">
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Снаряжение</h2>
+          <button class="icon-btn" onclick="openSheet('item-add-sheet')">＋</button>
+        </div>
+        <div id="inventory-list"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h2>Валюта</h2></div>
+        <div class="mini-grid" id="currency-grid"></div>
+      </div>
+    </div>
+
+    <!-- ══════════════════ PAGE: NOTES ══════════════════ -->
+    <div class="page" id="page-notes">
+      <div class="panel">
+        <div class="panel-head"><h2>Предыстория</h2></div>
+        <textarea class="notes-area" id="notes-background" placeholder="История персонажа, мотивация, связи..."></textarea>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h2>Черты и особенности</h2></div>
+        <textarea class="notes-area" id="notes-traits" placeholder="Черты характера, идеалы, привязанности, слабости..."></textarea>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h2>Прочие заметки</h2></div>
+        <textarea class="notes-area" id="notes-misc" placeholder="Квесты, NPC, важные события..."></textarea>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+
+  <!-- ══════════════════ TAB BAR ══════════════════ -->
+  <nav class="tabbar">
+    <button class="tab-btn active" onclick="navTo('main', this)">
+      <span class="tab-icon">⚔️</span><span>Бой</span>
+    </button>
+    <button class="tab-btn" onclick="navTo('skills', this)">
+      <span class="tab-icon">🎯</span><span>Навыки</span>
+    </button>
+    <button class="tab-btn" onclick="navTo('spells', this)">
+      <span class="tab-icon">✨</span><span>Магия</span>
+    </button>
+    <button class="tab-btn" onclick="navTo('inventory', this)">
+      <span class="tab-icon">🎒</span><span>Инвентарь</span>
+    </button>
+    <button class="tab-btn" onclick="navTo('notes', this)">
+      <span class="tab-icon">📖</span><span>Заметки</span>
+    </button>
+  </nav>
+</div>
+
+<!-- ══════════════════ SHEETS ══════════════════ -->
+<div class="sheet-backdrop" id="backdrop" onclick="closeSheet()"></div>
+
+<!-- Stats sheet -->
+<div class="sheet" id="stats-sheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-head">
+    <h3>Характеристики</h3>
+    <button class="icon-btn" onclick="closeSheet()">✕</button>
+  </div>
+  <div class="fields" id="stats-fields"></div>
+  <br/>
+  <button class="primary-btn" onclick="saveStats()">Сохранить</button>
+</div>
+
+<!-- Combat sheet -->
+<div class="sheet" id="combat-sheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-head">
+    <h3>Персонаж</h3>
+    <button class="icon-btn" onclick="closeSheet()">✕</button>
+  </div>
+  <div class="fields">
+    <div class="field"><label>Имя</label><input class="field-input" id="f-name" placeholder="Имя персонажа" /></div>
+    <div class="fields two-col">
+      <div class="field"><label>Класс</label>
+        <select class="field-input" id="f-class">
+          <option value="">— Выберите —</option>
+          <option>Варвар</option><option>Бард</option><option>Жрец</option>
+          <option>Друид</option><option>Воин</option><option>Монах</option>
+          <option>Паладин</option><option>Следопыт</option><option>Плут</option>
+          <option>Чародей</option><option>Колдун</option><option>Волшебник</option>
+        </select>
+      </div>
+      <div class="field"><label>Уровень</label><input class="field-input" id="f-level" type="number" min="1" max="20" placeholder="1" /></div>
+    </div>
+    <div class="fields two-col">
+      <div class="field"><label>Раса</label><input class="field-input" id="f-race" placeholder="Эльф, Человек…" /></div>
+      <div class="field"><label>Предыстория</label><input class="field-input" id="f-background" placeholder="Солдат, Мудрец…" /></div>
+    </div>
+    <div class="fields two-col">
+      <div class="field"><label>КД</label><input class="field-input" id="f-ac" type="number" placeholder="10" /></div>
+      <div class="field"><label>Скорость (фт)</label><input class="field-input" id="f-speed" type="number" placeholder="30" /></div>
+    </div>
+    <div class="fields two-col">
+      <div class="field"><label>Макс. хиты</label><input class="field-input" id="f-hp-max" type="number" placeholder="10" /></div>
+      <div class="field"><label>Временные хиты</label><input class="field-input" id="f-hp-temp" type="number" placeholder="0" /></div>
+    </div>
+    <div class="field"><label>Пассивное восприятие</label><input class="field-input" id="f-passive" type="number" placeholder="10" /></div>
+  </div>
+  <br/>
+  <button class="primary-btn" onclick="saveCombat()">Сохранить</button>
+</div>
+
+<!-- Add spell sheet -->
+<div class="sheet" id="spell-add-sheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-head">
+    <h3>Добавить заклинание</h3>
+    <button class="icon-btn" onclick="closeSheet()">✕</button>
+  </div>
+  <div class="fields">
+    <div class="field"><label>Название</label><input class="field-input" id="f-spell-name" placeholder="Огненный шар" /></div>
+    <div class="fields two-col">
+      <div class="field"><label>Уровень</label>
+        <select class="field-input" id="f-spell-level">
+          <option value="0">Заговор</option>
+          <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+          <option value="4">4</option><option value="5">5</option><option value="6">6</option>
+          <option value="7">7</option><option value="8">8</option><option value="9">9</option>
+        </select>
+      </div>
+      <div class="field"><label>Школа</label>
+        <select class="field-input" id="f-spell-school">
+          <option>Воплощение</option><option>Ограждение</option><option>Прорицание</option>
+          <option>Очарование</option><option>Вызов</option><option>Иллюзия</option>
+          <option>Некромантия</option><option>Преобразование</option>
+        </select>
+      </div>
+    </div>
+    <div class="fields two-col">
+      <div class="field"><label>Дальность</label><input class="field-input" id="f-spell-range" placeholder="30 фт" /></div>
+      <div class="field"><label>Время накладывания</label><input class="field-input" id="f-spell-cast" placeholder="1 действие" /></div>
+    </div>
+    <div class="field"><label>Описание</label><textarea class="field-input" id="f-spell-desc" placeholder="Краткое описание эффекта…"></textarea></div>
+  </div>
+  <br/>
+  <button class="primary-btn" onclick="saveSpell()">Добавить</button>
+</div>
+
+<!-- Add item sheet -->
+<div class="sheet" id="item-add-sheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-head">
+    <h3>Добавить предмет</h3>
+    <button class="icon-btn" onclick="closeSheet()">✕</button>
+  </div>
+  <div class="fields">
+    <div class="field"><label>Название</label><input class="field-input" id="f-item-name" placeholder="Длинный меч" /></div>
+    <div class="fields two-col">
+      <div class="field"><label>Тип</label>
+        <select class="field-input" id="f-item-type">
+          <option>Оружие</option><option>Доспех</option><option>Зелье</option>
+          <option>Магический предмет</option><option>Инструмент</option><option>Разное</option>
+        </select>
+      </div>
+      <div class="field"><label>Вес (фн)</label><input class="field-input" id="f-item-weight" type="number" placeholder="0" /></div>
+    </div>
+    <div class="field"><label>Описание / характеристики</label><textarea class="field-input" id="f-item-desc" placeholder="1к8 + мод. Силы, колющий урон…"></textarea></div>
+  </div>
+  <br/>
+  <button class="primary-btn" onclick="saveItem()">Добавить</button>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════════
+const STAT_NAMES = ['СИЛ','ЛОВ','ТЕЛ','ИНТ','МДР','ХАР'];
+const STAT_KEYS  = ['str','dex','con','int','wis','cha'];
+
+const SKILLS = [
+  {name:'Акробатика',        attr:'dex'},
+  {name:'Анализ',            attr:'int'},
+  {name:'Атлетика',          attr:'str'},
+  {name:'Внимательность',    attr:'wis'},
+  {name:'Выживание',         attr:'wis'},
+  {name:'Выступление',       attr:'cha'},
+  {name:'Запугивание',       attr:'cha'},
+  {name:'История',           attr:'int'},
+  {name:'Ловкость рук',      attr:'dex'},
+  {name:'Магия',             attr:'int'},
+  {name:'Медицина',          attr:'wis'},
+  {name:'Обман',             attr:'cha'},
+  {name:'Обращение с животными', attr:'wis'},
+  {name:'Природа',           attr:'int'},
+  {name:'Проницательность',  attr:'wis'},
+  {name:'Религия',           attr:'int'},
+  {name:'Скрытность',        attr:'dex'},
+  {name:'Убеждение',         attr:'cha'},
+  {name:'Уличные слухи',     attr:'cha'},
+</];
+
+const SPELL_SLOTS_DEFAULT = [4,3,3,3,3,2,2,1,1]; // 1–9 уровни
+
+let state = {
+  name: '', charClass: '', race: '', background: '',
+  level: 1, ac: 10, speed: 30,
+  hpMax: 10, hpCurrent: 10, hpTemp: 0,
+  passive: 10,
+  str:10, dex:10, con:10, int:10, wis:10, cha:10,
+  proficiencies: {},  // skill key -> 0|1|2 (0=none,1=prof,2=exp)
+  savingProfs: {},    // stat key -> bool
+  spells: [],
+  spellSlots: SPELL_SLOTS_DEFAULT.map((max,i) => ({level:i+1, max, used:0})),
+  inventory: [],
+  currency: { pp:0, gp:0, ep:0, sp:0, cp:0 },
+  deathSucc: [false,false,false],
+  deathFail: [false,false,false],
+  notes: { background:'', traits:'', misc:'' },
+};
+
+// ══════════════════════════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════════════════════════
+const mod = v => Math.floor((v - 10) / 2);
+const fmod = v => { const m = mod(v); return (m >= 0 ? '+' : '') + m; };
+const prof = () => Math.ceil(state.level / 4) + 1;
+const skillBonus = (skill) => {
+  const base = mod(state[skill.attr]);
+  const p = state.proficiencies[skill.name] || 0;
+  if (p === 2) return base + prof() * 2;
+  if (p === 1) return base + prof();
+  return base;
+};
+const saveBonus = (key) => {
+  const base = mod(state[key]);
+  return state.savingProfs[key] ? base + prof() : base;
+};
+const fval = v => (v >= 0 ? '+' : '') + v;
+
+// ══════════════════════════════════════════════════════════
+// NAVIGATION
+// ══════════════════════════════════════════════════════════
+function navTo(id, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ══════════════════════════════════════════════════════════
+// SHEETS
+// ══════════════════════════════════════════════════════════
+function openSheet(id) {
+  if (id === 'combat-sheet') fillCombatForm();
+  if (id === 'stats-sheet') fillStatsForm();
+  document.getElementById(id).classList.add('open');
+  document.getElementById('backdrop').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeSheet() {
+  document.querySelectorAll('.sheet').forEach(s => s.classList.remove('open'));
+  document.getElementById('backdrop').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+// ══════════════════════════════════════════════════════════
+// RENDER
+// ══════════════════════════════════════════════════════════
+function renderAll() {
+  renderHeader();
+  renderHP();
+  renderStats();
+  renderMini();
+  renderSaves();
+  renderSkills();
+  renderSpells();
+  renderInventory();
+  renderCurrency();
+  renderNotes();
+  renderDeathSaves();
+}
+
+function renderHeader() {
+  document.getElementById('char-name-display').textContent = state.name || 'Новый персонаж';
+  const sub = [state.charClass, state.race, state.background].filter(Boolean).join(' · ');
+  document.getElementById('char-class-display').textContent = sub || 'Нажмите ⚔️ → ✏️ для настройки';
+  document.getElementById('level-display').textContent = state.level;
+  document.getElementById('prof-display').textContent = fval(prof());
+  document.getElementById('speed-display').textContent = (state.speed || 30) + ' фт';
+  document.getElementById('hd-display').textContent = HD_BY_CLASS[state.charClass] || 'к8';
+}
+
+const HD_BY_CLASS = {
+  'Варвар':'к12','Воин':'к10','Следопыт':'к10','Паладин':'к10',
+  'Бард':'к8','Жрец':'к8','Друид':'к8','Монах':'к8','Плут':'к8',
+  'Чародей':'к6','Колдун':'к8','Волшебник':'к6',
+};
+
+function renderHP() {
+  const cur = state.hpCurrent;
+  const max = state.hpMax;
+  const pct = max > 0 ? Math.max(0, Math.min(100, (cur / max) * 100)) : 0;
+  let color;
+  if (pct > 60) color = 'linear-gradient(90deg,#58d67b,#a8ff78)';
+  else if (pct > 25) color = 'linear-gradient(90deg,#f0c060,#ffd700)';
+  else color = 'linear-gradient(90deg,#ff6d8a,#ff4560)';
+  document.getElementById('hp-bar').style.width = pct + '%';
+  document.getElementById('hp-bar').style.background = color;
+  const tempStr = state.hpTemp > 0 ? ' (+' + state.hpTemp + ')' : '';
+  document.getElementById('hp-display').innerHTML = cur + tempStr + ' <span>/ ' + max + '</span>';
+  document.getElementById('ac-display').textContent = state.ac || '—';
+  document.getElementById('init-display').textContent = fmod(state.dex);
+  const dead = cur <= 0;
+  document.getElementById('death-saves-section').style.display = dead ? 'block' : 'none';
+}
+
+function renderDeathSaves() {
+  ['success','fail'].forEach(type => {
+    const cont = document.getElementById('death-' + type);
+    cont.innerHTML = '';
+    state['death' + (type === 'success' ? 'Succ' : 'Fail')].forEach((on, i) => {
+      const d = document.createElement('div');
+      d.className = 'death-pip ' + type + (on ? ' on' : '');
+      d.onclick = () => {
+        state['death' + (type === 'success' ? 'Succ' : 'Fail')][i] = !on;
+        renderDeathSaves();
+      };
+      cont.appendChild(d);
+    });
+  });
+}
+
+function renderStats() {
+  const g = document.getElementById('stats-grid');
+  g.innerHTML = STAT_KEYS.map((k, i) => `
+    <div class="stat-card">
+      <span class="stat-name">${STAT_NAMES[i]}</span>
+      <span class="stat-score">${state[k]}</span>
+      <span class="stat-mod">${fmod(state[k])}</span>
+    </div>
+  `).join('');
+}
+
+function renderMini() {
+  document.getElementById('level-display').textContent = state.level;
+  document.getElementById('prof-display').textContent = fval(prof());
+  document.getElementById('speed-display').textContent = (state.speed || 30) + ' фт';
+  document.getElementById('hd-display').textContent = HD_BY_CLASS[state.charClass] || 'к8';
+}
+
+function renderSaves() {
+  const g = document.getElementById('saves-grid');
+  g.innerHTML = STAT_KEYS.map((k, i) => `
+    <div class="save-row">
+      <div class="prof-dot ${state.savingProfs[k] ? 'on' : ''}" onclick="toggleSaveProf('${k}')" title="Владение"></div>
+      <span class="save-name">${STAT_NAMES[i]}</span>
+      <span class="save-val">${fval(saveBonus(k))}</span>
+    </div>
+  `).join('');
+}
+
+function toggleSaveProf(key) {
+  state.savingProfs[key] = !state.savingProfs[key];
+  renderSaves();
+}
+
+function renderSkills() {
+  const g = document.getElementById('skills-list');
+  g.innerHTML = SKILLS.map(s => {
+    const p = state.proficiencies[s.name] || 0;
+    const dotClass = p === 2 ? 'exp' : p === 1 ? 'on' : '';
+    const bonus = skillBonus(s);
+    return `
+      <div class="skill-row">
+        <div class="prof-dot ${dotClass}" onclick="cycleProf('${s.name}')" title="Переключить"></div>
+        <span class="skill-name">${s.name}</span>
+        <span class="skill-attr">${s.attr.toUpperCase()}</span>
+        <span class="skill-bonus ${bonus >= 0 ? 'positive' : 'negative'}">${fval(bonus)}</span>
+      </div>
+    `;
+  }).join('');
+}
+
+function cycleProf(name) {
+  const cur = state.proficiencies[name] || 0;
+  state.proficiencies[name] = (cur + 1) % 3;
+  renderSkills();
+}
+
+function renderSpells() {
+  // Slots
+  const sc = document.getElementById('spell-slots');
+  sc.innerHTML = state.spellSlots.map((sl, i) => {
+    const pips = Array.from({length: sl.max}, (_, j) => `
+      <div class="pip ${j < sl.used ? 'used' : ''}" onclick="toggleSlot(${i},${j})"></div>
+    `).join('');
+    return `
+      <div class="slot-card">
+        <div class="slot-lvl">${sl.level} ур.</div>
+        <div class="slot-pips">${pips}</div>
+        <div class="slot-nums">${sl.max - sl.used}/${sl.max}</div>
+      </div>
+    `;
+  }).join('');
+
+  // Spells list
+  const sl = document.getElementById('spells-list');
+  if (!state.spells.length) {
+    sl.innerHTML = '<div class="empty">Нет заклинаний. Нажмите ＋ чтобы добавить.</div>';
+    return;
+  }
+  const byLevel = {};
+  state.spells.forEach(sp => {
+    const k = sp.level === '0' || sp.level === 0 ? 'Заговоры' : sp.level + ' уровень';
+    if (!byLevel[k]) byLevel[k] = [];
+    byLevel[k].push(sp);
+  });
+  sl.innerHTML = Object.entries(byLevel).map(([lvl, spells]) => `
+    <div class="eyebrow" style="margin-bottom:8px;margin-top:12px">${lvl}</div>
+    <div class="list">
+      ${spells.map((sp, idx) => `
+        <div class="list-item">
+          <div class="item-left">
+            <div class="item-title">${sp.name}</div>
+            <div class="item-sub">${sp.school} · ${sp.range} · ${sp.cast}</div>
+          </div>
+          <button class="icon-btn" onclick="removeSpell(${state.spells.indexOf(sp)})" style="color:var(--color-negative)">✕</button>
+        </div>
+      `).join('')}
+    </div>
+  `).join('');
+}
+
+function toggleSlot(slotIdx, pipIdx) {
+  const sl = state.spellSlots[slotIdx];
+  if (pipIdx < sl.used) sl.used = pipIdx;
+  else sl.used = pipIdx + 1;
+  renderSpells();
+}
+
+function renderInventory() {
+  const el = document.getElementById('inventory-list');
+  if (!state.inventory.length) {
+    el.innerHTML = '<div class="empty">Инвентарь пуст. Нажмите ＋ чтобы добавить.</div>';
+    return;
+  }
+  el.innerHTML = '<div class="list">' + state.inventory.map((item, i) => `
+    <div class="list-item">
+      <div class="item-left">
+        <div class="item-title">${item.name}</div>
+        <div class="item-sub">${item.type}${item.weight ? ' · ' + item.weight + ' фн' : ''}</div>
+      </div>
+      <button class="icon-btn" onclick="removeItem(${i})" style="color:var(--color-negative)">✕</button>
+    </div>
+  `).join('') + '</div>';
+}
+
+function renderCurrency() {
+  const pairs = [['pp','Платина'],['gp','Золото'],['ep','Электр'],['sp','Серебро'],['cp','Медь']];
+  document.getElementById('currency-grid').innerHTML = pairs.map(([k, label]) => `
+    <div class="mini-card">
+      <span>${label}</span>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button class="icon-btn" style="width:30px;height:30px;font-size:16px" onclick="adjCurrency('${k}',-1)">−</button>
+        <strong id="cur-${k}">${state.currency[k]}</strong>
+        <button class="icon-btn" style="width:30px;height:30px;font-size:16px" onclick="adjCurrency('${k}',1)">＋</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderNotes() {
+  document.getElementById('notes-background').value = state.notes.background;
+  document.getElementById('notes-traits').value = state.notes.traits;
+  document.getElementById('notes-misc').value = state.notes.misc;
+}
+
+// ══════════════════════════════════════════════════════════
+// ACTIONS
+// ══════════════════════════════════════════════════════════
+function applyDamage() {
+  const v = parseInt(document.getElementById('hp-dmg-input').value) || 0;
+  if (!v) return;
+  if (state.hpTemp > 0) {
+    const absorbed = Math.min(state.hpTemp, v);
+    state.hpTemp -= absorbed;
+    state.hpCurrent -= Math.max(0, v - absorbed);
+  } else {
+    state.hpCurrent -= v;
+  }
+  state.hpCurrent = Math.max(-state.hpMax, state.hpCurrent);
+  document.getElementById('hp-dmg-input').value = '';
+  renderHP();
+}
+
+function applyHeal() {
+  const v = parseInt(document.getElementById('hp-heal-input').value) || 0;
+  if (!v) return;
+  state.hpCurrent = Math.min(state.hpMax, state.hpCurrent + v);
+  if (state.hpCurrent > 0) {
+    state.deathSucc = [false,false,false];
+    state.deathFail = [false,false,false];
+  }
+  document.getElementById('hp-heal-input').value = '';
+  renderHP();
+  renderDeathSaves();
+}
+
+function fillStatsForm() {
+  const f = document.getElementById('stats-fields');
+  f.innerHTML = STAT_KEYS.map((k, i) => `
+    <div class="field">
+      <label>${STAT_NAMES[i]}</label>
+      <input class="field-input" id="sf-${k}" type="number" min="1" max="30" value="${state[k]}" />
+    </div>
+  `).join('');
+}
+
+function saveStats() {
+  STAT_KEYS.forEach(k => {
+    const v = parseInt(document.getElementById('sf-' + k).value);
+    if (!isNaN(v)) state[k] = Math.max(1, Math.min(30, v));
+  });
+  closeSheet();
+  renderAll();
+}
+
+function fillCombatForm() {
+  document.getElementById('f-name').value = state.name;
+  document.getElementById('f-class').value = state.charClass;
+  document.getElementById('f-level').value = state.level;
+  document.getElementById('f-race').value = state.race;
+  document.getElementById('f-background').value = state.background;
+  document.getElementById('f-ac').value = state.ac;
+  document.getElementById('f-speed').value = state.speed;
+  document.getElementById('f-hp-max').value = state.hpMax;
+  document.getElementById('f-hp-temp').value = state.hpTemp;
+  document.getElementById('f-passive').value = state.passive;
+}
+
+function saveCombat() {
+  const lvl = parseInt(document.getElementById('f-level').value) || 1;
+  const hpMax = parseInt(document.getElementById('f-hp-max').value) || 10;
+  const wasMax = state.hpCurrent === state.hpMax;
+  state.name       = document.getElementById('f-name').value.trim();
+  state.charClass  = document.getElementById('f-class').value;
+  state.level      = Math.max(1, Math.min(20, lvl));
+  state.race       = document.getElementById('f-race').value.trim();
+  state.background = document.getElementById('f-background').value.trim();
+  state.ac         = parseInt(document.getElementById('f-ac').value) || 10;
+  state.speed      = parseInt(document.getElementById('f-speed').value) || 30;
+  state.hpMax      = hpMax;
+  state.hpTemp     = parseInt(document.getElementById('f-hp-temp').value) || 0;
+  state.passive    = parseInt(document.getElementById('f-passive').value) || 10;
+  if (wasMax) state.hpCurrent = hpMax;
+  closeSheet();
+  renderAll();
+}
+
+function saveSpell() {
+  const name = document.getElementById('f-spell-name').value.trim();
+  if (!name) return;
+  state.spells.push({
+    name,
+    level: document.getElementById('f-spell-level').value,
+    school: document.getElementById('f-spell-school').value,
+    range: document.getElementById('f-spell-range').value || '—',
+    cast: document.getElementById('f-spell-cast').value || '1 действие',
+    desc: document.getElementById('f-spell-desc').value,
+  });
+  document.getElementById('f-spell-name').value = '';
+  document.getElementById('f-spell-range').value = '';
+  document.getElementById('f-spell-desc').value = '';
+  closeSheet();
+  renderSpells();
+}
+
+function removeSpell(i) {
+  state.spells.splice(i, 1);
+  renderSpells();
+}
+
+function saveItem() {
+  const name = document.getElementById('f-item-name').value.trim();
+  if (!name) return;
+  state.inventory.push({
+    name,
+    type: document.getElementById('f-item-type').value,
+    weight: parseFloat(document.getElementById('f-item-weight').value) || 0,
+    desc: document.getElementById('f-item-desc').value,
+  });
+  document.getElementById('f-item-name').value = '';
+  document.getElementById('f-item-weight').value = '';
+  document.getElementById('f-item-desc').value = '';
+  closeSheet();
+  renderInventory();
+}
+
+function removeItem(i) {
+  state.inventory.splice(i, 1);
+  renderInventory();
+}
+
+function adjCurrency(k, d) {
+  state.currency[k] = Math.max(0, state.currency[k] + d);
+  document.getElementById('cur-' + k).textContent = state.currency[k];
+}
+
+// Notes autosave
+['background','traits','misc'].forEach(key => {
+  document.getElementById('notes-' + key).addEventListener('input', e => {
+    state.notes[key] = e.target.value;
+  });
+});
+
+// ══════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════
+renderAll();
+</script>
+</body>
 </html>
